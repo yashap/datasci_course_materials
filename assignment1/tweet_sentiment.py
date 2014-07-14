@@ -1,11 +1,9 @@
 import sys
 import csv
-# import json
+import json
 
-# Generic functions
-def lines(fp):
-	print str(len(fp.readlines()))
-	# Simply prints the number of lines in a file
+# Designed to be run from terminal, with this command
+# python tweet_sentiment.py AFINN-111.txt output.txt
 
 # Load AFINN file
 def loadSentiment(fname):
@@ -17,13 +15,33 @@ def loadSentiment(fname):
 	return scores
 
 # Load Tweets
+def loadTweets(fname):
+	tweets = []
+	with open(fname, 'rb') as f:
+		for line in f:
+			tweets.append(json.loads(line))
+	return tweets
+
+# Print tweet scores
+def scoreTweets(tweets, scores):
+	for tweet in tweets:
+		tweet_score = 0
+		text = tweet.get("text")
+		if not tweet.get("text"):
+			text = ""
+		words = text.split()
+		for word in words:
+			word_score = scores.get(word)
+			if not word_score:
+				word_score = 0
+			tweet_score += word_score
+		print(tweet_score)
+
 
 def main():
-	sent_file = open(sys.argv[1])
-	# tweet_file = open(sys.argv[2])
-	lines(sent_file)
-	# lines(tweet_file)
-	print(loadSentiment("AFINN-111.txt"))
+	scores = loadSentiment(sys.argv[1])
+	tweets = loadTweets(sys.argv[2])
+	scoreTweets(tweets, scores)
 
 if __name__ == '__main__':
 	main()
