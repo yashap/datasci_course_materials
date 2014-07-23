@@ -9,5 +9,5 @@ To pull from public repo:
 git pull origin master
 
 To push/pull, with my fork:
+git pull github my-branch
 git push github my-branch
-git pull --rebase github my-branch
