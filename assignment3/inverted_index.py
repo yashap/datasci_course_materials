@@ -4,7 +4,7 @@ import sys
 # Word Count Example in the Simple Python MapReduce Framework
 
 # Run it like this:
-# python wordcount.py data/books.json
+# python inverted_index.py data/books.json
 # And it will print the final result to stdout
 
 mr = MapReduce.MapReduce()
@@ -13,21 +13,19 @@ mr = MapReduce.MapReduce()
 # Do not modify above this line
 
 def mapper(record):
-  # key: document identifier
-  # value: document contents
-  key = record[0]
-  value = record[1]
-  words = value.split()
-  for w in words:
-    mr.emit_intermediate(w, 1)
+  doc_name = record[0]
+  text = record[1]
+  words = text.split()
+  for word in words:
+    mr.emit_intermediate(word, doc_name)
 
-def reducer(key, list_of_values):
-  # key: word
-  # value: list of occurrence counts
-  total = 0
-  for v in list_of_values:
-    total += v
-  mr.emit((key, total))
+def reducer(word, list_of_docs):
+  mr.emit((word, dedupe(list_of_docs)))
+
+def dedupe(seq):
+  seen = set()
+  seen_add = seen.add
+  return [x for x in seq if not (x in seen or seen_add(x))]
 
 # Do not modify below this line
 # =============================
