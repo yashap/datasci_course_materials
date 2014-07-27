@@ -4,7 +4,7 @@ import sys
 # Word Count Example in the Simple Python MapReduce Framework
 
 # Run it like this:
-# python asymmetric_friendships.py data/friends.json
+# python unique_trims.py data/dna.json
 # And it will print the final result to stdout
 
 mr = MapReduce.MapReduce()
@@ -13,19 +13,11 @@ mr = MapReduce.MapReduce()
 # Do not modify above this line
 
 def mapper(record):
-  mr.emit_intermediate(record[0], record[1])
-  mr.emit_intermediate(record[1], record[0])
+  trimmed = record[1][:-10]
+  mr.emit_intermediate(trimmed, 1)
 
-def reducer(person, friends):
-  seen = {}
-  for friend in friends:
-    if friend not in seen:
-      seen[friend] = 1
-    else:
-      seen[friend] += 1
-  for friend in seen:
-    if seen[friend] == 1:
-      mr.emit((person, friend))
+def reducer(key, value):
+  mr.emit(key)
 
 # Do not modify below this line
 # =============================
