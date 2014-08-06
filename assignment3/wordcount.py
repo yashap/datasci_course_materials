@@ -15,7 +15,7 @@ mr = MapReduce.MapReduce()
 def mapper(record):
   # key: document identifier
   # value: document contents
-  key = record[0]
+  # key = record[0]
   value = record[1]
   words = value.split()
   for w in words:
