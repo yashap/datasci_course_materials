@@ -1,6 +1,7 @@
 What is Pig?
 - an engine for executing programs on top of Hadoop
 - provides a language, Pig Latin, to specify these programs
+	- inspired by relational algebra
 - will generate a sequence of MR jobs
 
 Why use Pig?
@@ -25,6 +26,7 @@ Users = load 'users' as (name, age);
 -- Filter it
 Fltrd = filter Users by age >= 18 and age <= 25;
 
+
 -- Load pages data based on specific schema
 Users = load 'pages' as (user, url);
 
@@ -32,12 +34,117 @@ Users = load 'pages' as (user, url);
 Jnd = join Fltrd by name, Pages by user;
 -- Group
 Grpd = group Jnd by url;
--- 
+-- For each group, count the number of clicks
 Smmd = foreach Grpd generate group, COUNT(Jnd) as clicks;
+-- Sort
 Strd = order Smmd by clicks desc;
+-- Get the top 5
 Top5 = limit Strd 5;
+-- Store the results
 store Top5 into 'top5sites';
 
 
+- Due to lazy evaluation, no work is actually done until the store step.
+- These lines could all together represent 1 or many MR jobs
+- What Pig does:
+	1) Pig parser creates parsed program
+	2) Pig complier creates execution plan
+	3) Pig MR complier creates the MR jobs, each with 1+ map and 1+ reduce
+		- All runs of the Hadoop file system
+- Data Model
+	- Data types are:
+		- Atom
+			- integer, string, etc.
+		- Tuple
+			- seuquence of fields
+			- each field any type
+			- mixed types OK
+		- Bag
+			- collection of tuples
+			- not necessarily the same type (i.e. not like relations in RDBMS)
+			- duplicates OK
+		- Map
+			- String literal keys mapped to any type
+	- Definitely NON-RELTIONAL
+		- nested structures
+	- Example:
 
-*** LEFT OFF AT 4:30 OF THE PIG INTRO VIDEO ***
+	<1,{<2,3>,<4,6>,<5,7>},['apache':'search']>
+
+	- This is a tuple, with an integer, then a bag of tuples, then a map
+	- We'll refer to these as:
+		- f1: atom
+		- f2: bag
+		- f3: map
+	- And we can use expressions like this:
+		Expression		Result
+		$0						1
+		f2						Bag {<2,3>,<4,6>,<5,7>}
+		f2.$0					Bag {<2>,<4>,<5>}
+		f3#'apache'		Atom "search"
+		sum(f2.$0)		2+4+5
+
+- Pig Functions:
+	- LOAD
+		- Input assumed to be a bag (sequence) of tuples
+		- Specify a parsing function with USING
+		- Specify a schema with AS
+
+		A = LOAD 'myfile.txt' USING PigStorage('\t') AS (f1,f2,f3);
+
+		<1,2,3>
+		<4,2,1>
+		<8,3,4>
+		<4,3,3>
+		<7,2,5>
+		<8,4,3>
+
+		- schema on read
+		- can work with raw data
+			- *for large systems, it can often make sense to do large scale, parallel ETL with Hadoop, then load into RDBMS after*
+
+	- FILTER
+		- arbitrary conditions
+		- arbitrary boolean conditions
+		- regex allowed
+
+		Y = FILTER A by f1 == '8';
+
+		<8,3,4>
+		<8,4,3>
+
+		- Note the 8 as text
+
+	- GROUP
+		- will return tuples
+		- each tuple is a group, and each tuple has the grouping element first, then a bag of everything in the group
+
+		X = GROUP A BY f1;
+
+		<1,{<1,2,3>}>
+		<4,{<4,2,1>,<4,3,3>}>
+		<7,{<7,2,5>}>
+		<8,{<8,3,4>,<8,4,3>}>
+
+		- the first field will be named "group"
+		- second field named "A"
+			- because it is actually all the same tuples originally in A
+
+	- DISTINCT
+
+	Y = DISTINCT A
+
+	For example, if your input is:
+
+	A =	<1,2,3>
+			<1,2,3>
+			<4,5,6>
+
+	Then
+
+	Y =	<1,2,3>
+			<4,5,6>
+
+
+
+*** LEFT OFF AT 7:20 OF PIG FUNCTIONS (right after the 2nd quiz) ***
