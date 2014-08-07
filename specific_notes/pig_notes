@@ -1,0 +1,43 @@
+What is Pig?
+- an engine for executing programs on top of Hadoop
+- provides a language, Pig Latin, to specify these programs
+- will generate a sequence of MR jobs
+
+Why use Pig?
+- Why not just write the raw MR?
+- Example:
+	- we have user data in one file
+	- website data in another
+	- want TOP 5 MOST VISITED SITES BY USERS AGED 18-25
+- Would need to
+	- Load users, then filter by age
+	- Load pages
+	- Join users/pages on name
+	- Group on URL
+	- Order by clicks
+	- Take top 5
+- ~170 lines of MR code to do this! (~4 hrs to write)
+- In Pig Latin, 9 lines of code (~10 mins to write)
+- Here's what it looks like in Pig:
+
+-- Load user data based on specific schema
+Users = load 'users' as (name, age);
+-- Filter it
+Fltrd = filter Users by age >= 18 and age <= 25;
+
+-- Load pages data based on specific schema
+Users = load 'pages' as (user, url);
+
+-- Join
+Jnd = join Fltrd by name, Pages by user;
+-- Group
+Grpd = group Jnd by url;
+-- 
+Smmd = foreach Grpd generate group, COUNT(Jnd) as clicks;
+Strd = order Smmd by clicks desc;
+Top5 = limit Strd 5;
+store Top5 into 'top5sites';
+
+
+
+*** LEFT OFF AT 4:30 OF THE PIG INTRO VIDEO ***
