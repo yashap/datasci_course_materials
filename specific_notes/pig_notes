@@ -129,6 +129,13 @@ store Top5 into 'top5sites';
 		- the first field will be named "group"
 		- second field named "A"
 			- because it is actually all the same tuples originally in A
+		- How this works:
+			- It's a single MR job
+			- Map:
+				key: f1
+				value: (f1, f2, f3)
+			- Reduce:
+				The prep for reduce actually does all the grouping work, so reduce just returns it's input (which is a bunch of tuples, where the first value is the key, and the second value is a bag of tuples associated with that key)
 
 	- DISTINCT
 
@@ -145,6 +152,213 @@ store Top5 into 'top5sites';
 	Y =	<1,2,3>
 			<4,5,6>
 
+- FOREACH
+	- The most complex/hard to understand
+	- Manipulate each tuple in a bag
+	- Syntax is like this:
+
+	X = FOREACH A GENERATE f0, f1+f2
+
+	- This would generate tuples with the first value being f0, and the second being the sum of f1 and f2
+
+	- And to use it in the context of our previous example:
+
+	Y = GROUP A BY f1;
+	Z = FOREACH Y GENERATE group, Y.($1,$2);
+
+	- Remember that "group" is the magic name given to each of the things we group on, and Y is the values of the groups (the bag of tuples)
+
+	- So, for these last examples, we start with:
+
+	-- original data
+	A = 	<1,2,3>
+				<4,2,1>
+				<8,3,4>
+				<4,3,3>
+				<7,2,5>
+				<8,4,3>
+
+	-- simple foreach on orig data
+	X = 	<1,5>
+				<4,3>
+				<8,7>
+				<4,6>
+				<7,7>
+				<8,7>
+
+	-- group orig data
+	Y = 	<1,{<1,2,3>}>
+				<4,{<4,2,1>,<4,3,3>}>
+				<7,{<7,2,5>}>
+				<8,{<8,3,4>,<8,4,3>}>
+
+	-- foreach on grouped data
+	Z = 	<1,{<2,3>}>
+				<4,{<2,1>,<3,3>}>
+				<7,{<2,5>}>
+				<8,{<3,4>,<4,3>}>
+
+	- BASICALLY, FOREACH LET'S US MANIPULATE NESTED DATA
+
+- FLATTEN
+	- Not it's own operator, always used with FOREACH
+	- Basically, flattens out nested structures
+	- So with the example above, if we changed this:
+
+	Z = FOREACH Y GENERATE group, Y.($1,$2);
+
+	- To this:
+
+	Z = FOREACH Y GENERATE group, FLATTEN(Y);
+
+	- We end up with this:
+
+	Z = 	<1,2,3>
+				<4,2,1>
+				<4,3,3>
+				<7,2,5>
+				<8,3,4>
+				<8,4,3>
+
+	- Note the extra rows, but same total number of tuples (i.e. how the group 4 got added to all of it's tuples)
+
+- COGROUP
+	- Used to get data together
+	- How it works is you chose a common key, and you get all the tuples in each group that share that key
+
+	- Example:
+
+	C = COGROUP A BY f1, B BY $0;
+	-- note that it was an arbitrary choice to use the field name f1, and the position $0.  Could have used $0 for both in this case
+
+	A = 	<1,2,3>
+				<4,2,1>
+				<8,3,4>
+				<4,3,3>
+				<7,2,5>
+				<8,4,3>
+
+	B = 	<2,4>
+				<8,9>
+				<1,3>
+				<2,7>
+				<2,9>
+				<4,6>
+				<4,9>
+
+	C = 	<1,{<1,2,3>},{<1,3>}>
+				<2,{},{<2,4>,<2,7>,<2,9>}>
+				<4,{<4,2,1>,<4,3,3>},{<4,6>,<4,9>}>
+				<7,{<7,2,5>},{}>
+				<8,{<8,3,4>,<8,4,3>},{<8,9>}>
+
+- JOIN
+	- JOIN is just a special case of COGROUP
+	- It basically does the same, but formats the output differently
+
+	C = JOIN A BY $0, B BY $0
+
+	-- With cogroup we got:
+	C = 	<1,{<1,2,3>},{<1,3>}>
+				<2,{},{<2,4>,<2,7>,<2,9>}>
+				<4,{<4,2,1>,<4,3,3>},{<4,6>,<4,9>}>
+				<7,{<7,2,5>},{}>
+				<8,{<8,3,4>,<8,4,3>},{<8,9>}>
+	-- But we'll eliminate all the no matching
+	C = 	<1,{<1,2,3>},{<1,3>}>
+				<4,{<4,2,1>,<4,3,3>},{<4,6>,<4,9>}>
+				<8,{<8,3,4>,<8,4,3>},{<8,9>}>
+	-- Then kind of crossproduct, to get:
+
+	C = 	<1,2,3,1,3>
+				<4,2,1,4,6>
+				<4,2,1,4,9>
+				<4,3,3,4,6>
+				<4,3,3,4,9>
+				<8,3,4,8,9>
+				<8,4,3,8,9>
+
+	- Or, just think of it as a SQL inner join
+
+*******
+NOTE:
+*******
+You can cogroup AND join with more than 2 data sets
+
+Ways to make this more efficient, in special cases:
+
+1) Replicated join (also called broadcast join)
+	- Say we have one huge data set, that we want to join to a very small one
+	- In this case, it's more efficient to just copy the very small one a bunch of times, give it to every mapper (that each have a chunk of the big data set), then the mappers can do all the work and you don't have to shuffle as much data accross the network
+	- The mappers can do all the work because they have all the data they need to do the join
+	- The main thing is that the small relation must fit in memory
+
+2) Skew join
+	- You have two good sized data sets
+	- BUT a huge amount of data is going to end up on one reducer
+		- i.e. imagine you're joining payments with line items, and one payment has a million line items
+	- you lose the help of parallelism, as one reducer ends up doing all the work
+		- map reduce is essentially only as fast as the slowest task, so if you have tonnes of very fast tasks, and one really slow one, you're still kind of screwed
+		- these slow ones are often called "stragglers" or "skew"
+	- How to make this faster?
+		- One option, for that reduce task that's taking forever, essentially do a replicated join (replicate the smaller side of the data set, i.e. the order number, and split the bigger side, the line items, into a bunch of chunks)
+
+3) Merge join
+	- If you know the things you want to join on are already one the right machines, everything can be done in the map phase
+	- i.e. if the orders are all on the same machine as the corresponding line items, then you can just do a map phase
+
+You have to explicitly specify that you want to do one of these special joins, Pig won't be able to do it for you
+
+Why COGROUP and not JOIN?
+- JOIN is a 2 step process
+	1) Create groups with shared keys
+	2) Produce joined tuples
+- COGROUP only performs the first step
+	- groups on shared key, but DOESN'T produce joined tuples
+	- you might want to do other processing on the groups
+		e.g. count the tuples
+- these are equivalent:
+
+join_result = JOIN A BY $0, B BY $0;
+
+temp = COGROUP A BY $0, B BY $0;
+join_result = FOREACH temp GENERATE FLATTEN(A),FLATTEN(B);
 
 
-*** LEFT OFF AT 7:20 OF PIG FUNCTIONS (right after the 2nd quiz) ***
+- Other commands
+	- STORE
+		- writes data out
+		- i.e. to HDFS
+		- You can even use your own function to write out, i.e.
+
+		STORE bagName INTO 'myoutput.txt' USING some_func();
+
+	- UNION
+		- unions and removes duplicates
+	- CROSS
+		- cross product
+	- DUMP
+		- prints outputs to screen
+	- ORDER
+		- sorts output
+
+
+- Example of how to use:
+
+Imagine we have weblog traffic data with IP, time and URL
+
+A = LOAD 'traffic.dat' AS (ip, time, url);
+B = GROUP A BY ip;
+C = FOREACH B GENERATE group ip, COUNT(A);
+-- so we're getting the number of weblog records per ip
+D = FILTER C BY ip IS '192.168.0.1';
+	OR ip IS '192.168.0.0';
+-- an only interested in 2 ips
+STORE D INTO 'local_traffic.data';
+
+Note that this looks really inefficient - should filter before grouping
+
+
+
+
+*** LEFT OFF AT 2:25 OF Pig Evaluation ***
