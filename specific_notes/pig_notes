@@ -357,8 +357,15 @@ D = FILTER C BY ip IS '192.168.0.1';
 STORE D INTO 'local_traffic.data';
 
 Note that this looks really inefficient - should filter before grouping
+	- could just rewrite the program
+	- BUT don't have to, Pig will do this automatically
+		- will move the filter earlier
+		- uses lazy evaluation --> no work is done until STORE
 
+Pig will also minimize # of MR jobs
+	- in the above example, need an MR job for GROUP
+	- BUT the LOAD and FILTER commands can be lumped into GROUP's map job
+	- it will also bunch together GROUP and FOREACH
+		- instead of producing the traditional group out put, i.e. (key, entire object), it will produce (key, count)
+	- Things like GROUP and ORDER always require their own commands, but many things do not
 
-
-
-*** LEFT OFF AT 2:25 OF Pig Evaluation ***

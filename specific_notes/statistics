@@ -1,0 +1,21 @@
+Statistical inference
+	- methods for drawing conclusions about a population from sample data
+	- 2 key methods:
+		- hypothesis test
+			- compare experimental and control groups
+			- null hypothesis (HO) = no difference
+			- alternative hypoth (HA) = statistically signif diff
+			- careful experimental design most important
+				- randomized trials
+				- blinded/double blinded
+			- BUT in data science we often can't do experiments
+			- ERRORS:
+				- HO is true, BUT reject HO --> type 1 error (rate that this happens is alpha)
+				- HO is false, BUT don't reject HO --> type 2 error (rate that this happens is beta)
+				- the power of a test is 1 - beta (type 2 error)
+					- this is your ability to reject a false null hypothesis
+		- confidence interval
+			- 
+
+
+*** left off at start of publication bias ***
