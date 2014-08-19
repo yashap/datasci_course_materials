@@ -15,7 +15,248 @@ Statistical inference
 				- the power of a test is 1 - beta (type 2 error)
 					- this is your ability to reject a false null hypothesis
 		- confidence interval
-			- 
+
+p-value
+	- Assume that there's no difference btwn groups
+		- if you do the experiment over and over again, what % of the time would you get values this extreme or more, by chance?
+		- this is the p-value
+	- If the test is two sided:
+		- p = 2 * P(X > |observed value|)
+	- If the test is one sided:
+		- If HA is that the mean is > null mean:
+			- p = P(X > observed value)
+		- If HA is that the mean is < null mean:
+			- p = P(X < observed value)
+	- we arbitrarily say that p = 0.05 is significant/good enough
+
+"Decline effect"
+	- We often see cool results not hold up well to replication
+	- Why?
+		1) Publication bias
+			- we rarely publish negative results
+			- i.e. if we try 20 drug experiments, and only 1 works, that's the only one we publish
+			- in general, IF THERE IS NO ACTUAL EFFECT, we'd expect small sample sizes to have huge variation (could show very positive or very negative), and as sample size grows the variation shrinks (to showing basically no effect)
+			- if we only publish the most positive results at every study size, we'd see this decline effect --> very positive results at small sample sizes, less positive as sample sizes grow
+
+#######
+Aside: going over some key concepts
+#######
+
+Effect size
+	- p-value is a probability of getting at least that effect size
+		- doesn't tell you how big the effect, just if it's significant
+	- effect size tells you the size of the effect
+	- Effect Size = (mean of experimental group - mean of control group) / standard deviation
+		- the std dev is the "pooled" standard dev
+			- lots of ways to calculate this
+	- used a lot in meta-analysis
+	- because it's standardized, you can say things like:
+		- small = 0.2
+		- medium = 0.5
+		- large = 0.8
+	- it basically says "for every bit of difference in the mean, how much standard deviation are you accounting for?"
+
+Confidence Interval (of effect size)
+	- 95% CI of effect size:
+		- if we repeat the experiment 100 times, we expect that this interval would include this effect size 95/100 times
+		- if this interval includes 0, that's equivalent to saying it's not statsitically significant
+
+Meta-analysis
+	- Combine results of other studies into a new study
+		- Individual results may not be significant, but combine enough and maybe they are
+	- Important in data science
+		- often working with data you didn't collect
+		- often combining data from different sources
+			- when is this OK?  Test for homogeneity
+	- Tends to use WEIGHTED AVERAGES of the findings of different studies
+		- average across multiple studies, but give more weight to more precise studies
+		- i.e.:
+			- weight be sample size
+			- inverse-variance weight
+				- if the study has very high standard error, it wasn't very precise, so weight it less
+
+Heteroskedasticity
+	- when the variance itself is not constant
+		- i.e. at high x, there's little variance in y, but at low x there's lots of variance
+	- not necessarily a problem
+		- still provides an unbiased estimate
+		- BUT can increase error estimates, leading to type 2 errors (overlooking a real effect)
+
+#######
+End aside
+#######
+
+	2) Reason 2 for decline effect: mistakes and fraud
+		- Benford's Law
+			- potential tool for fraud detection
+			- basically, with a lot of real values it's very common for the value to start with 1, less common for it to start with 2, etc.
+			- tonnes of data conforms to this
+				- number of Twitter followers
+				- destance of stars from Earth in light years
+				- UK govt spending May-Sept 2010
+				- Google books unique 1-grams
+		- Diekmann, 2007
+			- found that the 1st and 2nd digits of published statistical estimates were approximately Benford distributed
+			- asked subjects to manufacture regression coefficients, and found that the first digits were hard to detect as anomolous, but the 2nd and 3rd deviated from expected distributions significantly
+				- so, could use 2nd and 3rd digits to look for fraud
+		- Benford's Law Intuition
+			- given a sequence of cards labeled 1,2,3,...,999999
+			- put them in a hat, one by one, in order
+			- after each card, ask "what is the probability of drawing a card where the first digit is 1?"
+			- at 1, starts high, then trails off
+			- same effect after the 10s for 20-99
+			- same effect after the 100s for 200-999
+			- etc.
+		- Benford's Law limitations
+			- data must span several orders of magnitude
+			- no min/max cutoffs
+
+	3) Reason 3 for decline effect: Multiple Hypothesis Testing
+		- sort of similar to publication bias
+		- if you perform an experiment over and over, you're bound to find something
+			- SIGNIFICANCE LEVEL MUST BE ADJUSTED DOWN WHEN PERFORMING MULTIPLE HYPOTHESIS TESTS
+			- i.e. must be much lower than 0.05
+		- "Familywise Error Rate"
+			- if you do 50 tests, 90% chance of at least one being statistically significant even if there's no effect!
+		- Different ways to correct for this
+			- Very conservative:
+				- Bonferroni Correction
+				- Sidak Correction
+			- Less conservative
+				- False Discovery Rate
+					- FDR = False Discoveries / True Discoveries
+					- Basically says:
+					"4 false discoveries out of 10 rejected null hypotheses"
+					is worse than
+					"20 false discoveries out of 100 rejected null hypotheses"
+					- How it works:
+						- compute the p-value of m hypotheses
+						- order them in increasing order of p-value
+						- then have a cutoff (only accept the top X)
 
 
-*** left off at start of publication bias ***
+What about Big Data?
+	- classical stats was fashioned for small data, few parameters
+	- corellation != causation
+		- when you search for patterns in big data, you'll pretty much always find them, even if they have no predictive power
+		- example: consider stock prices for 500 companies over a month, LOTS will be corelated, but this tells you nothing
+	- big P vs. big N
+		- P = # of variables (columns)
+		- N = # of records
+		- marginal cost of increasing N is essentially zero
+			- but while >N decreases variance, it amplifies bias
+			- e.g. you log all clicks to your website to model user behavious, but this only samples current users, not the users you want to attract
+
+
+Bayesian approach to stats
+	- Frquentists approach:
+		- P(D|H)
+		- Probability of seeing this data, given the null hypothesis
+	- Baysesian approach:
+		- P(H|D)
+		- Probability of a given outcome, given this data
+	- Assumptions:
+		- Frequentist
+			- data are a repeatable random sample
+			- underlying parameters remain constant during repeatable process
+			- parameters are fixed
+		- Bayesian
+			- data are observed from a realized sample
+			- parameters are unknown and described probabilistically
+			- data are fixed
+	- Basically, with Bayesian approach you don't think about going back and sampling more data
+	- All about Bayes' theorem:
+		- P(A|B) = ( P(B|A) * P(A) ) / P(B)
+		- the key benefit is that you get to incorporate prior knowledge
+			- but the key weakness is the need to incorporate prior knowledge!
+	- Bayes' theory is all about showing you how to ALTER YOUR PRIOR BELIEF
+		- but it RELIES ON YOUR PRIOR BELIEF
+		- so for the same data, with different prior belief, you can get different results
+
+
+Bayes Theorem, in more detail:
+
+P(H|D) = ( P(D|H) * P(H) ) / P(D)
+
+Posterior - P(H|D)
+The probability of our hypothesis being true given the data collected
+
+Likelihood - P(D|H)
+The probability of collecting this data when our hypothesis is true
+
+Prior - P(H)
+The probability of the hypothesis being true before collecting data
+
+Marginal - P(D)
+What is the probability of collecting this data under all possible hypotheses?
+
+Example:
+- 1% of women at age 40 who participate in routine screening have breast cancer
+- 80% of women with breast cancer get positive mammographies
+- 9.6% of women without breast cancer will also get positive mammographies
+- If a woman in this age group tests positive, what is the probability she actually has breast cancer?
+
+So the data is that she tested positive, and the hypothesis is that she actually has breast cancer?
+P(have cancer|test pos) is what we want
+P(test pos|have cancer) = 0.8
+P(have cancer) = 0.01
+P(test pos) = 0.01*0.8 + 0.99*0.096
+
+P(having breast cancer|tested positive) = 0.8*0.01/0.096
+= 7.8%
+
+
+Another way to think of this:
+
+First, map out all the possibilities:
+
+P(cancer & pos test) = 0.01 * 0.8
+P(cancer & false test) = 0.01 * 0.2
+P(no cancer & pos test) = 0.99 * 0.096
+P(no cancer & pos test) = 0.99 * 0.904
+
+Next, plug into Bayes' rule:
+
+P(cancer|pos test) = P(pos test|cancer) * 
+P(cancer) / P(pos test)
+
+P(cancer) = 0.01
+P(pos test|cancer) = 0.8
+P(pos test) = P(pos test|cancer) * P(cancer) + P(pos test|no cancer) * P(no cancer)
+= 0.8 * 0.01 + 0.096 * 0.99
+= 0.103
+
+P(cancer|pos test) = 0.8 * 0.01 / 0.103
+= 0.078
+
+
+
+That was a VERY SIMPLE case
+	- we were given all the probabilities
+	- each of the cases only had 2 possible states
+
+More complex case: spam filtering with naive Bayes
+	- we want to determine if an email message is spam, given the words in the email message
+
+P(spam|words) = P(spam) * P(words|spam) / P(words)
+
+P(spam|viagra,rich,...,friend) = P(spam) * P(viagra,rich,...,friend|spam) / P(viagra,rich,...,friend)
+
+In this case, we don't actually care about the denominator, P(words)
+	- why?
+	- because we don't care about the actual probability, we just want to rank how spammy emails are against each other
+
+P(spam)P(viagra,rich,...,friend|spam)
+= P(spam)P(viagra|spam)P(rich,...,friend|spam,viagra)
+= P(spam)P(viagra|spam)P(rich|spam,viagra)P(...,friend|spam,viagra,rich)
+
+Naive Bayes --> if we can assume that the probability of seeing words are independent (i.e. seeing "rich" doesn't make you more or less likely to see "wealth"), then this can be simplified to:
+
+P(viagra|spam)P(rich|spam)...P(friend|spam)
+
+And all of those probabilities are easy to get with data --> just find all your spam messages, see the P of words being in them
+
+Then you can just multiply all these Ps for each email to find the spammiest emails
+
+
+*** left off at 4:50 of last Bayes video ***
